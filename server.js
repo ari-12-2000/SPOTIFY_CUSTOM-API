@@ -32,7 +32,7 @@ app.get("/callback", async (req, res) => {
     );
 
     const { access_token } = tokenResponse.data;
-    res.json({ access_token }); // copy it for now
+    res.json({ access_token }); 
   } catch (err) {
     res.status(500).json({ error: err.response?.data || err.message });
   }

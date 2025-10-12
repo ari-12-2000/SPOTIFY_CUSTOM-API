@@ -14,25 +14,33 @@ app.get("/login", (req, res) => {
 
 // Step 2: Spotify redirects to /callback with ?code=
 app.get("/callback", async (req, res) => {
-  const code = req.query.code;
-  try {
-    const tokenResponse = await axios.post(
-      "https://accounts.spotify.com/api/token",
-      new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: process.env.REDIRECT_URI,
-        client_id: process.env.SPOTIFY_CLIENT_ID,
-        client_secret: process.env.SPOTIFY_CLIENT_SECRET,
-      }),
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-    );
+    const code = req.query.code;
+    const authString = Buffer.from(
+        `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
+    ).toString("base64");
 
-    const { access_token } = tokenResponse.data;
-    res.json({ access_token }); // copy it for now
-  } catch (err) {
-    res.status(500).json({ error: err.response?.data || err.message });
-  }
+    try {
+        const tokenResponse = await axios.post(
+            "https://accounts.spotify.com/api/token", // <-- CORRECT ENDPOINT
+            new URLSearchParams({
+                grant_type: "authorization_code",
+                code,
+                redirect_uri: process.env.REDIRECT_URI,
+                // client_id and client_secret are NOT needed in the body when using the Authorization header
+            }),
+            { 
+                headers: { 
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Authorization": `Basic ${authString}` // <-- REQUIRED HEADER
+                } 
+            }
+        );
+
+        const { access_token } = tokenResponse.data;
+        res.json({ access_token });
+    } catch (err) {
+        res.status(500).json({ error: err.response?.data || err.message });
+    }
 });
 
 // Step 3: Use the token to fetch top tracks

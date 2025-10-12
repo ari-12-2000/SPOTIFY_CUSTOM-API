@@ -5,7 +5,6 @@ import dotenv from "dotenv";
 dotenv.config();
 const app = express();
 
-const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
 const SPOTIFY_TOP_TRACKS_URL = "https://api.spotify.com/v1/me/top/tracks?limit=10";
 const SPOTIFY_PLAYER_URL = "https://api.spotify.com/v1/me/player";
 // Step 1: Redirect user to Spotify login
@@ -17,8 +16,9 @@ app.get("/login", (req, res) => {
 
 // Step 2: Spotify redirects to /callback with ?code=
 app.get("/callback", async (req, res) => {
-  const code = req.query.code;
+  
   try {
+    const code = req.query.code;
     const tokenResponse = await axios.post(
       "https://accounts.spotify.com/api/token",
       new URLSearchParams({
@@ -40,8 +40,9 @@ app.get("/callback", async (req, res) => {
 
 // Step 3: Use the token to fetch top tracks
 app.get("/spotify", async (req, res) => {
-  const accessToken = req.query.token; 
+  
   try {
+    const accessToken = req.query.token; 
     const headers = { Authorization: `Bearer ${accessToken}` };
             // 1. Fetch Top Tracks (limit=10)
         const topTracksResponse = await axios.get(SPOTIFY_TOP_TRACKS_URL, { headers });
@@ -57,6 +58,7 @@ app.get("/spotify", async (req, res) => {
         const currentlyPlaying = playingResponse.data.item ? {
             name: playingResponse.data.item.name,
             artist: playingResponse.data.item.artists.map(a => a.name).join(', '),
+            uri: playingResponse.data.item.uri,
         } : null;
 
         // 3. Return the consolidated JSON response
@@ -91,9 +93,11 @@ app.put("/spotify/stop", async (req, res) => {
 // Endpoint to start playing a top 10 song
 // Example usage: PUT /spotify/play/spotify:track:TRACK_ID_HERE
 app.put("/spotify/play/:trackUri", async (req, res) => {
-    const trackUri = decodeURIComponent(req.params.trackUri);
+    
     try {
+        const trackUri = decodeURIComponent(req.params.trackUri);
         const accessToken = req.query.token;
+        console.log("Playing track URI:", trackUri);
         await axios.put(SPOTIFY_PLAYER_URL + "/play", {
             uris: [trackUri]
         }, {

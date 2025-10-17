@@ -3,5 +3,26 @@
     "axios": "^1.12.2",
     "dotenv": "^17.2.3",
     "express": "^5.1.0"
-  }
+  },
+  "name": "spotify-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ari-12-2000/SPOTIFY_CUSTOM-API.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ari-12-2000/SPOTIFY_CUSTOM-API/issues"
+  },
+  "homepage": "https://github.com/ari-12-2000/SPOTIFY_CUSTOM-API#readme"
 }

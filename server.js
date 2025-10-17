@@ -88,7 +88,7 @@ app.put("/spotify/stop", async (req, res) => {
     res.json({ status: "success", message: "Playback stopped." });
   } catch (err) {
     res.status(500).json({
-      error: "Failed to stop playback. Is a device active?",
+      error: "Failed to stop playback.",
       details: err.message,
     });
   }
@@ -116,7 +116,7 @@ app.put("/spotify/play/:trackUri", async (req, res) => {
     res.json({ status: "success", message: `Started playing: ${trackUri}` });
   } catch (err) {
     res.status(500).json({
-      error: "Failed to start playback. Is a device active?",
+      error: "Failed to start playback.",
       details: err.message,
     });
   }

@@ -17,52 +17,52 @@ let cachedRefreshToken = null;
 // // -------------------------------------
 // // STEP 1: Login → Redirect user to Spotify authorization page
 // // -------------------------------------
-// app.get("/login", (req, res) => {
-//   const scopes = "user-top-read user-read-currently-playing user-modify-playback-state";
-//   const authorizeURL = `https://accounts.spotify.com/authorize?client_id=${
-//     process.env.SPOTIFY_CLIENT_ID
-//   }&response_type=code&redirect_uri=${encodeURIComponent(
-//     process.env.REDIRECT_URI
-//   )}&scope=${encodeURIComponent(scopes)}`;
-//   res.redirect(authorizeURL);
-// });
+app.get("/login", (req, res) => {
+  const scopes = "user-top-read user-read-currently-playing user-modify-playback-state";
+  const authorizeURL = `https://accounts.spotify.com/authorize?client_id=${
+    process.env.SPOTIFY_CLIENT_ID
+  }&response_type=code&redirect_uri=${encodeURIComponent(
+    process.env.REDIRECT_URI
+  )}&scope=${encodeURIComponent(scopes)}`;
+  res.redirect(authorizeURL);
+});
 
 // // -------------------------------------
 // // STEP 2: Spotify redirects here with ?code=... after login
 // // -------------------------------------
-// app.get("/callback", async (req, res) => {
-//   try {
-//     const code = req.query.code;
-//     const tokenResponse = await axios.post(
-//       "https://accounts.spotify.com/api/token",
-//       new URLSearchParams({
-//         grant_type: "authorization_code",
-//         code,
-//         redirect_uri: process.env.REDIRECT_URI,
-//         client_id: process.env.SPOTIFY_CLIENT_ID,
-//         client_secret: process.env.SPOTIFY_CLIENT_SECRET,
-//       }),
-//       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-//     );
+app.get("/callback", async (req, res) => {
+  try {
+    const code = req.query.code;
+    const tokenResponse = await axios.post(
+      "https://accounts.spotify.com/api/token",
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: process.env.REDIRECT_URI,
+        client_id: process.env.SPOTIFY_CLIENT_ID,
+        client_secret: process.env.SPOTIFY_CLIENT_SECRET,
+      }),
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
 
-//     const { access_token, refresh_token } = tokenResponse.data;
+    const { access_token, refresh_token } = tokenResponse.data;
 
-//     // Cache the tokens in memory
-//     cachedAccessToken = access_token;
-//     cachedRefreshToken = refresh_token;
+    // Cache the tokens in memory
+    cachedAccessToken = access_token;
+    cachedRefreshToken = refresh_token;
 
-//     console.log("✅ Tokens obtained from Spotify and cached.");
+    console.log("✅ Tokens obtained from Spotify and cached.");
 
-//     res.json({
-//       message: "✅ Tokens obtained successfully.",
-//       access_token,
-//       refresh_token,
-//     });
-//   } catch (err) {
-//     console.error("Callback Error:", err.response?.data || err.message);
-//     res.status(500).json({ error: err.response?.data || err.message });
-//   }
-// });
+    res.json({
+      message: "✅ Tokens obtained successfully.",
+      access_token,
+      refresh_token,
+    });
+  } catch (err) {
+    console.error("Callback Error:", err.response?.data || err.message);
+    res.status(500).json({ error: err.response?.data || err.message });
+  }
+});
 
 // -------------------------------------
 // STEP 3: Refresh token logic

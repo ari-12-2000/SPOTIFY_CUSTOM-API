@@ -138,31 +138,18 @@ async function fetchWithSpotifyAuth(url, headers, res) {
 // -------------------------------------
 app.get("/spotify", async (req, res) => {
   try {
-    // Case 1: No token cached yet
+    // 🧠 1️⃣ If no access token yet, ask the user to log in
     if (!cachedAccessToken) {
-      console.log("⚠️ No token cached → returning Spotify login URL");
-
-      // Construct Spotify authorize URL
-      const scopes = "user-top-read user-read-currently-playing user-modify-playback-state";
-      const authorizeURL = `https://accounts.spotify.com/authorize?client_id=${
-        process.env.SPOTIFY_CLIENT_ID
-      }&response_type=code&redirect_uri=${encodeURIComponent(
-        process.env.REDIRECT_URI
-      )}&scope=${encodeURIComponent(scopes)}`;
-
-      // Instead of redirect, return JSON
-      return res.json({
-        status: "no_token",
-        message: "No access token cached. Please authenticate with Spotify.",
-        login_url: authorizeURL,
-      });
+      console.log("⚠️ No token cached → redirecting to login");
+      return res.redirect("/login");
     }
 
     const headers = { Authorization: `Bearer ${cachedAccessToken}` };
 
-    // 1️⃣ Get user's top 10 tracks
+    // 🧠 2️⃣ Fetch top 10 tracks
     const topTracksResponse = await fetchWithSpotifyAuth(SPOTIFY_TOP_TRACKS_URL, headers, res);
-    if (!topTracksResponse) return; // handled already
+    if (!topTracksResponse) return; // If handled (refresh or redirect), stop here
+
     const topTracks = topTracksResponse.data.items.map((track) => ({
       id: track.id,
       name: track.name,
@@ -170,7 +157,7 @@ app.get("/spotify", async (req, res) => {
       uri: track.uri,
     }));
 
-    // 2️⃣ Get currently playing song
+    // 🧠 3️⃣ Fetch currently playing song
     const playingResponse = await fetchWithSpotifyAuth(
       `${SPOTIFY_PLAYER_URL}/currently-playing`,
       { Authorization: `Bearer ${cachedAccessToken}` },
@@ -186,7 +173,7 @@ app.get("/spotify", async (req, res) => {
         }
       : null;
 
-    // 3️⃣ Return final JSON
+    // 🧠 4️⃣ Return final combined JSON
     res.json({
       status: "success",
       topTracks,
@@ -194,10 +181,11 @@ app.get("/spotify", async (req, res) => {
       note: "Access token auto-refreshes when expired. Re-login only if refresh fails.",
     });
   } catch (err) {
-    console.error("Error in /spotify:", err.message);
+    console.error("❌ Error in /spotify:", err.message);
     res.status(500).json({ error: err.response?.data || err.message });
   }
 });
+
 
 
 // -------------------------------------

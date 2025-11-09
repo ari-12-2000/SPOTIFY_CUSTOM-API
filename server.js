@@ -134,6 +134,7 @@ async function fetchWithSpotifyAuth(url, headers, res) {
         process.env.REDIRECT_URI
       )}&scope=${encodeURIComponent(scopes)}`;
       res.redirect(authorizeURL);
+      return null;
     }
 
     throw error;

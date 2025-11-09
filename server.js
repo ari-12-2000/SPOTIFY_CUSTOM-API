@@ -55,10 +55,10 @@ app.get("/callback", async (req, res) => {
 
     console.log("✅ Tokens obtained from Spotify and cached.");
 
-    res.redirect("/spotify");
+    return res.status(200).json({status: "success",message:"Logged in successfully",access_token, refresh_token, note:"After successfully logging in you can visit any protected url to get your data"});
   } catch (err) {
     console.error("Callback Error:", err.response?.data || err.message);
-    res.status(500).json({ error: err.response?.data || err.message });
+    return res.status(500).json({ error: err.response?.data || err.message });
   }
 });
 
@@ -158,7 +158,7 @@ app.get("/spotify", async (req, res) => {
       )}&scope=${encodeURIComponent(scopes)}`;
       return res.json({
         status: "no_token",
-        message: "Spotify login required",
+        message: "Spotify login required. Please navigate to the given login url",
         login_url: authorizeURL,
       });
     }
@@ -199,7 +199,7 @@ app.get("/spotify", async (req, res) => {
       : null;
 
     // 🧠 4️⃣ Return final combined JSON
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
       topTracks,
       currentlyPlaying,
@@ -207,7 +207,7 @@ app.get("/spotify", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Error in /spotify:", err.message);
-    res.status(500).json({ error: err.response?.data || err.message });
+    return res.status(500).json({ error: err.response?.data || err.message });
   }
 });
 
@@ -218,9 +218,9 @@ app.put("/spotify/stop", async (req, res) => {
   try {
     const headers = { Authorization: `Bearer ${cachedAccessToken}` };
     await axios.put(SPOTIFY_PLAYER_URL + "/pause", null, { headers });
-    res.json({ status: "success", message: "Playback stopped." });
+    return res.json({ status: "success", message: "Playback stopped." });
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       error: "Failed to stop playback.",
       details: err.message,
     });
@@ -244,9 +244,9 @@ app.put("/spotify/play/:trackUri", async (req, res) => {
       { headers }
     );
 
-    res.json({ status: "success", message: `Started playing: ${trackUri}` });
+    return res.json({ status: "success", message: `Started playing: ${trackUri}` });
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       error: "Failed to start playback.",
       details: err.message,
     });

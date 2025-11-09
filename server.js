@@ -8,7 +8,8 @@ dotenv.config();
 const app = express();
 app.use(cors());
 
-const SPOTIFY_TOP_TRACKS_URL = "https://api.spotify.com/v1/me/top/tracks?limit=10";
+const SPOTIFY_TOP_TRACKS_URL =
+  "https://api.spotify.com/v1/me/top/tracks?limit=10";
 const SPOTIFY_PLAYER_URL = "https://api.spotify.com/v1/me/player";
 
 let cachedAccessToken = null;
@@ -18,7 +19,8 @@ let cachedRefreshToken = null;
 // // STEP 1: Login → Redirect user to Spotify authorization page
 // // -------------------------------------
 app.get("/login", (req, res) => {
-  const scopes = "user-top-read user-read-currently-playing user-modify-playback-state";
+  const scopes =
+    "user-top-read user-read-currently-playing user-modify-playback-state";
   const authorizeURL = `https://accounts.spotify.com/authorize?client_id=${
     process.env.SPOTIFY_CLIENT_ID
   }&response_type=code&redirect_uri=${encodeURIComponent(
@@ -90,7 +92,10 @@ async function refreshAccessToken() {
     console.log("✅ Access token refreshed successfully.");
     return cachedAccessToken;
   } catch (err) {
-    console.error("❌ Failed to refresh token:", err.response?.data || err.message);
+    console.error(
+      "❌ Failed to refresh token:",
+      err.response?.data || err.message
+    );
     return null;
   }
 }
@@ -141,13 +146,27 @@ app.get("/spotify", async (req, res) => {
     // 🧠 1️⃣ If no access token yet, ask the user to log in
     if (!cachedAccessToken) {
       console.log("⚠️ No token cached → redirecting to login");
-      return res.redirect("/login");
+      const scopes ="user-top-read user-read-currently-playing user-modify-playback-state";
+      const authorizeURL = `https://accounts.spotify.com/authorize?client_id=${
+        process.env.SPOTIFY_CLIENT_ID
+      }&response_type=code&redirect_uri=${encodeURIComponent(
+        process.env.REDIRECT_URI
+      )}&scope=${encodeURIComponent(scopes)}`;
+      return res.json({
+        status: "no_token",
+        message: "Spotify login required",
+        login_url: authorizeURL,
+      });
     }
 
     const headers = { Authorization: `Bearer ${cachedAccessToken}` };
 
     // 🧠 2️⃣ Fetch top 10 tracks
-    const topTracksResponse = await fetchWithSpotifyAuth(SPOTIFY_TOP_TRACKS_URL, headers, res);
+    const topTracksResponse = await fetchWithSpotifyAuth(
+      SPOTIFY_TOP_TRACKS_URL,
+      headers,
+      res
+    );
     if (!topTracksResponse) return; // If handled (refresh or redirect), stop here
 
     const topTracks = topTracksResponse.data.items.map((track) => ({
@@ -168,13 +187,15 @@ app.get("/spotify", async (req, res) => {
     const currentlyPlaying = playingResponse.data?.item
       ? {
           name: playingResponse.data.item.name,
-          artist: playingResponse.data.item.artists.map((a) => a.name).join(", "),
+          artist: playingResponse.data.item.artists
+            .map((a) => a.name)
+            .join(", "),
           uri: playingResponse.data.item.uri,
         }
       : null;
 
     // 🧠 4️⃣ Return final combined JSON
-    res.json({
+    res.status(200).json({
       status: "success",
       topTracks,
       currentlyPlaying,
@@ -185,8 +206,6 @@ app.get("/spotify", async (req, res) => {
     res.status(500).json({ error: err.response?.data || err.message });
   }
 });
-
-
 
 // -------------------------------------
 // STOP PLAYBACK

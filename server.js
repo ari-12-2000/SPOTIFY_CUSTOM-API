@@ -65,31 +65,76 @@ app.get("/callback", async (req, res) => {
 });
 
 // -------------------------------------
-// STEP 3: Utility function - fetch with auto re-login on token expiry
+// STEP 3: Refresh token logic
+// -------------------------------------
+async function refreshAccessToken() {
+  if (!cachedRefreshToken) {
+    console.log("⚠️ No refresh token available → must re-login");
+    return null;
+  }
+
+  try {
+    console.log("🔁 Refreshing Spotify access token...");
+    const refreshResponse = await axios.post(
+      "https://accounts.spotify.com/api/token",
+      new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: cachedRefreshToken,
+        client_id: process.env.SPOTIFY_CLIENT_ID,
+        client_secret: process.env.SPOTIFY_CLIENT_SECRET,
+      }),
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
+
+    cachedAccessToken = refreshResponse.data.access_token;
+    console.log("✅ Access token refreshed successfully.");
+    return cachedAccessToken;
+  } catch (err) {
+    console.error("❌ Failed to refresh token:", err.response?.data || err.message);
+    return null;
+  }
+}
+
+// -------------------------------------
+// STEP 4: Utility function to fetch with retry
 // -------------------------------------
 async function fetchWithSpotifyAuth(url, headers, res) {
   try {
     return await axios.get(url, { headers });
   } catch (error) {
-    // If token is expired or invalid → redirect to login
     const status = error.response?.status;
     const spotifyError = error.response?.data?.error;
 
+    // Check if the token is expired or invalid
     if (
-      status === 401 || // Unauthorized
-      (spotifyError && spotifyError.message && spotifyError.message.toLowerCase().includes("expired"))
+      status === 401 ||
+      (spotifyError &&
+        spotifyError.message &&
+        spotifyError.message.toLowerCase().includes("expired"))
     ) {
-      console.warn("⚠️ Spotify token expired or invalid → redirecting to /login");
+      console.warn("⚠️ Spotify token expired, attempting refresh...");
+
+      // Try refresh first
+      const newAccessToken = await refreshAccessToken();
+
+      if (newAccessToken) {
+        console.log("✅ Retrying Spotify request with new token...");
+        const retryHeaders = { Authorization: `Bearer ${newAccessToken}` };
+        return await axios.get(url, { headers: retryHeaders });
+      }
+
+      // Refresh failed → redirect to login
+      console.warn("⚠️ Refresh failed → redirecting user to /login");
       res.redirect("/login");
       return null;
     }
 
-    throw error; // Other errors → pass through
+    throw error;
   }
 }
 
 // -------------------------------------
-// STEP 4: /spotify route → get top tracks + currently playing
+// STEP 5: /spotify route → get top tracks + currently playing
 // -------------------------------------
 app.get("/spotify", async (req, res) => {
   try {
@@ -103,6 +148,7 @@ app.get("/spotify", async (req, res) => {
     // 1️⃣ Get top 10 tracks
     const topTracksResponse = await fetchWithSpotifyAuth(SPOTIFY_TOP_TRACKS_URL, headers, res);
     if (!topTracksResponse) return; // redirected already
+
     const topTracks = topTracksResponse.data.items.map((track) => ({
       id: track.id,
       name: track.name,
@@ -113,10 +159,10 @@ app.get("/spotify", async (req, res) => {
     // 2️⃣ Get currently playing song
     const playingResponse = await fetchWithSpotifyAuth(
       `${SPOTIFY_PLAYER_URL}/currently-playing`,
-      headers,
+      { Authorization: `Bearer ${cachedAccessToken}` },
       res
     );
-    if (!playingResponse) return; // redirected already
+    if (!playingResponse) return;
 
     const currentlyPlaying = playingResponse.data?.item
       ? {
@@ -126,12 +172,12 @@ app.get("/spotify", async (req, res) => {
         }
       : null;
 
-    // 3️⃣ Return combined JSON
+    // 3️⃣ Return final JSON
     res.json({
       status: "success",
       topTracks,
       currentlyPlaying,
-      note: "If token expires, you’ll automatically be redirected to /login.",
+      note: "Access token auto-refreshes when expired. Re-login only if refresh fails.",
     });
   } catch (err) {
     console.error("Error in /spotify:", err.message);
@@ -139,13 +185,13 @@ app.get("/spotify", async (req, res) => {
   }
 });
 
-// Endpoint to stop the currently playing song
+// -------------------------------------
+// STOP PLAYBACK
+// -------------------------------------
 app.put("/spotify/stop", async (req, res) => {
   try {
-    const accessToken = req.query.token;
-    await axios.put(SPOTIFY_PLAYER_URL + "/pause", null, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    const headers = { Authorization: `Bearer ${cachedAccessToken}` };
+    await axios.put(SPOTIFY_PLAYER_URL + "/pause", null, { headers });
     res.json({ status: "success", message: "Playback stopped." });
   } catch (err) {
     res.status(500).json({
@@ -155,23 +201,21 @@ app.put("/spotify/stop", async (req, res) => {
   }
 });
 
-// Endpoint to start playing a top 10 song
-// Example usage: PUT /spotify/play/spotify:track:TRACK_ID_HERE
+// -------------------------------------
+// START PLAYBACK
+// -------------------------------------
 app.put("/spotify/play/:trackUri", async (req, res) => {
   try {
     const trackUri = decodeURIComponent(req.params.trackUri);
-    const accessToken = req.query.token;
-    console.log("Playing track URI:", trackUri);
+    const headers = {
+      Authorization: `Bearer ${cachedAccessToken}`,
+      "Content-Type": "application/json",
+    };
 
     await axios.put(
       SPOTIFY_PLAYER_URL + "/play",
       { uris: [trackUri] },
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-      }
+      { headers }
     );
 
     res.json({ status: "success", message: `Started playing: ${trackUri}` });
@@ -183,4 +227,6 @@ app.put("/spotify/play/:trackUri", async (req, res) => {
   }
 });
 
-app.listen(process.env.PORT, () => console.log("✅ Server running"));
+app.listen(process.env.PORT || 3000, () =>
+  console.log(`✅ Server running on port ${process.env.PORT || 3000}`)
+);

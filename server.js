@@ -14,55 +14,55 @@ const SPOTIFY_PLAYER_URL = "https://api.spotify.com/v1/me/player";
 let cachedAccessToken = null;
 let cachedRefreshToken = null;
 
-// -------------------------------------
-// STEP 1: Login → Redirect user to Spotify authorization page
-// -------------------------------------
-app.get("/login", (req, res) => {
-  const scopes = "user-top-read user-read-currently-playing user-modify-playback-state";
-  const authorizeURL = `https://accounts.spotify.com/authorize?client_id=${
-    process.env.SPOTIFY_CLIENT_ID
-  }&response_type=code&redirect_uri=${encodeURIComponent(
-    process.env.REDIRECT_URI
-  )}&scope=${encodeURIComponent(scopes)}`;
-  res.redirect(authorizeURL);
-});
+// // -------------------------------------
+// // STEP 1: Login → Redirect user to Spotify authorization page
+// // -------------------------------------
+// app.get("/login", (req, res) => {
+//   const scopes = "user-top-read user-read-currently-playing user-modify-playback-state";
+//   const authorizeURL = `https://accounts.spotify.com/authorize?client_id=${
+//     process.env.SPOTIFY_CLIENT_ID
+//   }&response_type=code&redirect_uri=${encodeURIComponent(
+//     process.env.REDIRECT_URI
+//   )}&scope=${encodeURIComponent(scopes)}`;
+//   res.redirect(authorizeURL);
+// });
 
-// -------------------------------------
-// STEP 2: Spotify redirects here with ?code=... after login
-// -------------------------------------
-app.get("/callback", async (req, res) => {
-  try {
-    const code = req.query.code;
-    const tokenResponse = await axios.post(
-      "https://accounts.spotify.com/api/token",
-      new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: process.env.REDIRECT_URI,
-        client_id: process.env.SPOTIFY_CLIENT_ID,
-        client_secret: process.env.SPOTIFY_CLIENT_SECRET,
-      }),
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-    );
+// // -------------------------------------
+// // STEP 2: Spotify redirects here with ?code=... after login
+// // -------------------------------------
+// app.get("/callback", async (req, res) => {
+//   try {
+//     const code = req.query.code;
+//     const tokenResponse = await axios.post(
+//       "https://accounts.spotify.com/api/token",
+//       new URLSearchParams({
+//         grant_type: "authorization_code",
+//         code,
+//         redirect_uri: process.env.REDIRECT_URI,
+//         client_id: process.env.SPOTIFY_CLIENT_ID,
+//         client_secret: process.env.SPOTIFY_CLIENT_SECRET,
+//       }),
+//       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+//     );
 
-    const { access_token, refresh_token } = tokenResponse.data;
+//     const { access_token, refresh_token } = tokenResponse.data;
 
-    // Cache the tokens in memory
-    cachedAccessToken = access_token;
-    cachedRefreshToken = refresh_token;
+//     // Cache the tokens in memory
+//     cachedAccessToken = access_token;
+//     cachedRefreshToken = refresh_token;
 
-    console.log("✅ Tokens obtained from Spotify and cached.");
+//     console.log("✅ Tokens obtained from Spotify and cached.");
 
-    res.json({
-      message: "✅ Tokens obtained successfully.",
-      access_token,
-      refresh_token,
-    });
-  } catch (err) {
-    console.error("Callback Error:", err.response?.data || err.message);
-    res.status(500).json({ error: err.response?.data || err.message });
-  }
-});
+//     res.json({
+//       message: "✅ Tokens obtained successfully.",
+//       access_token,
+//       refresh_token,
+//     });
+//   } catch (err) {
+//     console.error("Callback Error:", err.response?.data || err.message);
+//     res.status(500).json({ error: err.response?.data || err.message });
+//   }
+// });
 
 // -------------------------------------
 // STEP 3: Refresh token logic
@@ -138,17 +138,31 @@ async function fetchWithSpotifyAuth(url, headers, res) {
 // -------------------------------------
 app.get("/spotify", async (req, res) => {
   try {
+    // Case 1: No token cached yet
     if (!cachedAccessToken) {
-      console.log("⚠️ No token cached → redirecting to login");
-      return res.redirect("/login");
+      console.log("⚠️ No token cached → returning Spotify login URL");
+
+      // Construct Spotify authorize URL
+      const scopes = "user-top-read user-read-currently-playing user-modify-playback-state";
+      const authorizeURL = `https://accounts.spotify.com/authorize?client_id=${
+        process.env.SPOTIFY_CLIENT_ID
+      }&response_type=code&redirect_uri=${encodeURIComponent(
+        process.env.REDIRECT_URI
+      )}&scope=${encodeURIComponent(scopes)}`;
+
+      // Instead of redirect, return JSON
+      return res.json({
+        status: "no_token",
+        message: "No access token cached. Please authenticate with Spotify.",
+        login_url: authorizeURL,
+      });
     }
 
     const headers = { Authorization: `Bearer ${cachedAccessToken}` };
 
-    // 1️⃣ Get top 10 tracks
+    // 1️⃣ Get user's top 10 tracks
     const topTracksResponse = await fetchWithSpotifyAuth(SPOTIFY_TOP_TRACKS_URL, headers, res);
-    if (!topTracksResponse) return; // redirected already
-
+    if (!topTracksResponse) return; // handled already
     const topTracks = topTracksResponse.data.items.map((track) => ({
       id: track.id,
       name: track.name,
@@ -184,6 +198,7 @@ app.get("/spotify", async (req, res) => {
     res.status(500).json({ error: err.response?.data || err.message });
   }
 });
+
 
 // -------------------------------------
 // STOP PLAYBACK

@@ -55,11 +55,7 @@ app.get("/callback", async (req, res) => {
 
     console.log("✅ Tokens obtained from Spotify and cached.");
 
-    res.json({
-      message: "✅ Tokens obtained successfully.",
-      access_token,
-      refresh_token,
-    });
+    res.redirect("/spotify");
   } catch (err) {
     console.error("Callback Error:", err.response?.data || err.message);
     res.status(500).json({ error: err.response?.data || err.message });

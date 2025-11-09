@@ -6,13 +6,19 @@ const cors = require("cors");
 dotenv.config();
 const app = express();
 app.use(cors());
-const SPOTIFY_TOP_TRACKS_URL = "https://api.spotify.com/v1/me/top/tracks?limit=10";
+const SPOTIFY_TOP_TRACKS_URL =
+  "https://api.spotify.com/v1/me/top/tracks?limit=10";
 const SPOTIFY_PLAYER_URL = "https://api.spotify.com/v1/me/player";
 
 // Step 1: Redirect user to Spotify login
 app.get("/login", (req, res) => {
-  const scopes = "user-top-read user-read-currently-playing user-modify-playback-state";
-  const authorizeURL = `https://accounts.spotify.com/authorize?client_id=${process.env.SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.REDIRECT_URI)}&scope=${encodeURIComponent(scopes)}`;
+  const scopes =
+    "user-top-read user-read-currently-playing user-modify-playback-state";
+  const authorizeURL = `https://accounts.spotify.com/authorize?client_id=${
+    process.env.SPOTIFY_CLIENT_ID
+  }&response_type=code&redirect_uri=${encodeURIComponent(
+    process.env.REDIRECT_URI
+  )}&scope=${encodeURIComponent(scopes)}`;
   res.redirect(authorizeURL);
 });
 
@@ -32,8 +38,8 @@ app.get("/callback", async (req, res) => {
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
-    const { access_token } = tokenResponse.data;
-    res.json({ access_token });
+    const { access_token, refresh_token, expires_in } = tokenResponse.data;
+    res.json({ access_token, refresh_token, expires_in });
   } catch (err) {
     res.status(500).json({ error: err.response?.data || err.message });
   }
@@ -46,20 +52,27 @@ app.get("/spotify", async (req, res) => {
     const headers = { Authorization: `Bearer ${accessToken}` };
 
     // 1. Fetch Top Tracks (limit=10)
-    const topTracksResponse = await axios.get(SPOTIFY_TOP_TRACKS_URL, { headers });
-    const topTracks = topTracksResponse.data.items.map(track => ({
+    const topTracksResponse = await axios.get(SPOTIFY_TOP_TRACKS_URL, {
+      headers,
+    });
+    const topTracks = topTracksResponse.data.items.map((track) => ({
       id: track.id,
       name: track.name,
-      artist: track.artists.map(a => a.name).join(", "),
+      artist: track.artists.map((a) => a.name).join(", "),
       uri: track.uri,
     }));
 
     // 2. Fetch Currently Playing Song
-    const playingResponse = await axios.get(SPOTIFY_PLAYER_URL + "/currently-playing", { headers });
+    const playingResponse = await axios.get(
+      SPOTIFY_PLAYER_URL + "/currently-playing",
+      { headers }
+    );
     const currentlyPlaying = playingResponse.data.item
       ? {
           name: playingResponse.data.item.name,
-          artist: playingResponse.data.item.artists.map(a => a.name).join(", "),
+          artist: playingResponse.data.item.artists
+            .map((a) => a.name)
+            .join(", "),
           uri: playingResponse.data.item.uri,
         }
       : null;

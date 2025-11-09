@@ -126,8 +126,14 @@ async function fetchWithSpotifyAuth(url, headers, res) {
 
       // Refresh failed → redirect to login
       console.warn("⚠️ Refresh failed → redirecting user to /login");
-      res.redirect("/login");
-      return null;
+      const scopes =
+        "user-top-read user-read-currently-playing user-modify-playback-state";
+      const authorizeURL = `https://accounts.spotify.com/authorize?client_id=${
+        process.env.SPOTIFY_CLIENT_ID
+      }&response_type=code&redirect_uri=${encodeURIComponent(
+        process.env.REDIRECT_URI
+      )}&scope=${encodeURIComponent(scopes)}`;
+      res.redirect(authorizeURL);
     }
 
     throw error;
@@ -142,7 +148,8 @@ app.get("/spotify", async (req, res) => {
     // 🧠 1️⃣ If no access token yet, ask the user to log in
     if (!cachedAccessToken) {
       console.log("⚠️ No token cached → redirecting to login");
-      const scopes ="user-top-read user-read-currently-playing user-modify-playback-state";
+      const scopes =
+        "user-top-read user-read-currently-playing user-modify-playback-state";
       const authorizeURL = `https://accounts.spotify.com/authorize?client_id=${
         process.env.SPOTIFY_CLIENT_ID
       }&response_type=code&redirect_uri=${encodeURIComponent(

@@ -1,10 +1,11 @@
 const express = require("express");
 const axios = require("axios");
 const dotenv = require("dotenv");
+const cors = require("cors");
 
 dotenv.config();
 const app = express();
-
+app.use(cors());
 const SPOTIFY_TOP_TRACKS_URL = "https://api.spotify.com/v1/me/top/tracks?limit=10";
 const SPOTIFY_PLAYER_URL = "https://api.spotify.com/v1/me/player";
 
